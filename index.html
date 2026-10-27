@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#ffffff">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="AWT MAP">
+<title>ART WEEK TOKYO 2026 会場マップ</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Familjen+Grotesk:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.css">
+<style>
+body{margin:0}[hidden]{display:none!important}img{max-width:100%}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+
+/* Layout: one-screen map app — map fills the screen, a list/detail sheet docks at the bottom on phones and on the left on wide screens. */
+:root{
+  --bg:#f3f3ef; --surface:#ffffff; --ink:#16171a; --muted:#666a70; --line:#dcdcd5; --chip:#ebebe5;
+  --accent:#1d3bd6; --kk:#16171a;
+  --a-ginza:#d23c2a; --a-tokyo:#c47a00; --a-roppongi:#7a3ec2; --a-gaienmae:#0f8a6a; --a-omotesando:#1d3bd6; --a-harajuku:#d1408a; --a-daikanyama:#2f8fb8; --a-ikejiri:#6b7d12;
+  --f-display:"Familjen Grotesk","Zen Kaku Gothic New",system-ui,sans-serif;
+  --f-body:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",system-ui,sans-serif;
+  --f-mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+  --tile-filter:none;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#121315; --surface:#1b1c1f; --ink:#ececea; --muted:#9a9ea5; --line:#2e3034; --chip:#26282c;
+  --accent:#7d93ff; --kk:#f3f3ef;
+  --a-ginza:#ff6b57; --a-tokyo:#f0a63a; --a-roppongi:#b588f0; --a-gaienmae:#3cc79f; --a-omotesando:#7d93ff; --a-harajuku:#f57ab6; --a-daikanyama:#5dbde3; --a-ikejiri:#a8c04a;
+  --tile-filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.9) saturate(.6);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121315; --surface:#1b1c1f; --ink:#ececea; --muted:#9a9ea5; --line:#2e3034; --chip:#26282c;
+  --accent:#7d93ff; --kk:#f3f3ef;
+  --a-ginza:#ff6b57; --a-tokyo:#f0a63a; --a-roppongi:#b588f0; --a-gaienmae:#3cc79f; --a-omotesando:#7d93ff; --a-harajuku:#f57ab6; --a-daikanyama:#5dbde3; --a-ikejiri:#a8c04a;
+  --tile-filter:invert(1) hue-rotate(180deg) brightness(.82) contrast(.9) saturate(.6);
+  color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;overflow:hidden}
+*{box-sizing:border-box}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+#app{height:100%;display:grid;grid-template-rows:auto 1fr;}
+header{position:relative;background:var(--surface);border-bottom:1px solid var(--line);z-index:800;min-width:0}
+.bar{display:flex;align-items:center;gap:10px;min-height:46px;padding-block:6px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px))}
+.bar h1{flex:1 1 auto;min-width:0;font-family:var(--f-display);font-weight:700;font-size:15.5px;letter-spacing:-.01em;margin:0;line-height:1.2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar h1 span{color:var(--muted);font-weight:500}
+.dates,.dates-m{margin:0;color:var(--muted);font-family:var(--f-mono);font-size:11.5px;letter-spacing:.02em}
+.bar .dates{display:none}
+.ftoggle{flex:0 0 auto;display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--bg);cursor:pointer;font-size:12.5px;font-weight:500}
+.ftoggle[aria-expanded="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.ftoggle b[hidden]{display:none}
+.ftoggle b{font-family:var(--f-mono);font-size:10.5px;font-weight:500;min-width:17px;height:17px;border-radius:9px;background:var(--accent);color:#fff;display:inline-grid;place-items:center;padding:0 4px}
+.filters{display:none;position:absolute;top:100%;left:0;right:0;background:var(--surface);border-bottom:1px solid var(--line);box-shadow:0 10px 24px rgba(0,0,0,.14);padding-block:4px 12px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));flex-direction:column;gap:10px}
+header.open .filters{display:flex}
+.fdone{display:flex;justify-content:space-between;gap:8px}
+.fdone button{height:34px;border-radius:8px;padding:0 14px;cursor:pointer;font-size:13px}
+.reset{border:1px solid var(--line);background:var(--surface)}
+.done{border:1px solid var(--ink);background:var(--ink);color:var(--surface);font-weight:500;flex:1 1 auto}
+.controls{display:flex;gap:8px;align-items:center;min-width:0;flex-wrap:wrap}
+.controls select{flex:1 1 0}
+.controls input[type=search]{flex:1 1 100%;min-width:0;height:34px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:0 10px}
+.controls select{height:34px;border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:0 6px;min-width:0}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--surface);border-radius:999px;height:28px;padding:0 11px 0 9px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-size:12.5px;white-space:nowrap}
+.chip i{width:9px;height:9px;border-radius:50%;background:var(--c,var(--ink))}
+.chip b{font-family:var(--f-mono);font-weight:500;font-size:11px;color:var(--muted)}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chip[aria-pressed="true"] b{color:inherit;opacity:.7}
+
+main{position:relative;min-height:0;display:grid}
+#map{position:absolute;inset:0;background:var(--bg);z-index:0}
+.leaflet-tile-pane{filter:var(--tile-filter)}
+.leaflet-container{font-family:var(--f-body);background:var(--bg)}
+.leaflet-control-attribution{background:color-mix(in srgb,var(--surface) 85%,transparent)!important;color:var(--muted)!important;font-size:10px}
+.leaflet-control-attribution a{color:var(--muted)!important}
+.leaflet-bar a{background:var(--surface)!important;color:var(--ink)!important;border-color:var(--line)!important}
+.leaflet-control-zoom{margin-top:calc(10px + env(safe-area-inset-top,0px))!important;margin-right:calc(10px + env(safe-area-inset-right,0px))!important}
+
+.pin{width:var(--s,26px);height:var(--s,26px);border-radius:50%;background:var(--c);color:#fff;border:2px solid var(--surface);display:grid;place-items:center;font-family:var(--f-mono);font-size:11px;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.35);transition:transform .15s}
+.pin.sel{transform:scale(1.35);outline:2px solid var(--ink);outline-offset:1px}
+.pin.dim{opacity:.18;filter:grayscale(1)}
+.kkpin{background:var(--kk);color:var(--bg);border:2px solid var(--surface);border-radius:8px;padding:4px 8px;font-family:var(--f-display);font-weight:700;font-size:12px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,.35);line-height:1.15;text-align:center}
+.kkpin small{display:block;font-family:var(--f-mono);font-weight:400;font-size:10px;opacity:.8}
+.kkpin.sel{outline:2px solid var(--accent);outline-offset:2px}
+.kkpin.dim{opacity:.25}
+
+/* sheet */
+#sheet{position:absolute;left:0;right:0;bottom:0;z-index:600;background:var(--surface);border-top:1px solid var(--line);border-radius:16px 16px 0 0;box-shadow:0 -6px 24px rgba(0,0,0,.12);display:flex;flex-direction:column;height:58%;transition:height .25s ease;min-height:0}
+#sheet[data-size="peek"]{height:118px}
+#sheet[data-size="full"]{height:calc(100% - 12px)}
+.grab{flex:0 0 auto;border:0;background:none;padding:8px 0 2px;cursor:pointer;display:grid;place-items:center;width:100%}
+.grab span{width:40px;height:4px;border-radius:2px;background:var(--line)}
+.sheet-head{flex:0 0 auto;display:flex;align-items:center;justify-content:space-between;gap:8px;padding-block:2px 8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line)}
+.sheet-head h2{margin:0;font-size:13px;font-weight:700;letter-spacing:.02em}
+.sheet-head .count{font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.scroll{flex:1 1 auto;overflow-y:auto;min-height:0;-webkit-overflow-scrolling:touch;padding-bottom:env(safe-area-inset-bottom,0px)}
+.vlist{list-style:none;margin:0;padding:0}
+.vitem{display:grid;grid-template-columns:auto 1fr auto;gap:4px 10px;align-items:start;padding-block:11px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));border-bottom:1px solid var(--line);cursor:pointer;width:100%;text-align:left;background:none;border-left:0;border-right:0;border-top:0}
+.vitem:hover{background:var(--bg)}
+.vitem .dot{width:10px;height:10px;border-radius:50%;background:var(--c);margin-top:5px}
+.vitem .nm{font-weight:700;font-size:14px;line-height:1.35;min-width:0}
+.vitem .sub{grid-column:2;color:var(--muted);font-size:12px;line-height:1.45;min-width:0;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.vitem .n{font-family:var(--f-mono);font-size:12px;color:var(--muted);margin-top:2px}
+.empty{padding:24px 16px;color:var(--muted);line-height:1.6}
+
+/* detail */
+.detail{padding-block:12px 24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:14px}
+.back{align-self:flex-start;border:1px solid var(--line);background:var(--surface);border-radius:999px;height:30px;padding:0 12px;cursor:pointer;font-size:12.5px}
+.dhead{display:flex;flex-direction:column;gap:6px}
+.eyebrow{font-family:var(--f-mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--c);font-weight:500}
+.dhead h3{margin:0;font-family:var(--f-display);font-size:20px;line-height:1.25;text-wrap:balance}
+.addr{color:var(--muted);font-size:12.5px;line-height:1.5}
+.links{display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;gap:6px;height:32px;padding:0 12px;border-radius:8px;border:1px solid var(--ink);color:var(--ink);text-decoration:none;font-size:12.5px;font-weight:500}
+.btn.solid{background:var(--ink);color:var(--surface)}
+.note{font-size:12px;color:var(--muted);line-height:1.6;background:var(--bg);border-radius:8px;padding:10px 12px}
+.exs{display:flex;flex-direction:column;gap:10px}
+.ex{border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.ex.off{opacity:.45}
+.ex h4{margin:0;font-size:14.5px;line-height:1.4}
+.ex .cr{font-size:12.5px;color:var(--muted);line-height:1.5}
+.meta{display:grid;grid-template-columns:auto 1fr;gap:2px 10px;font-size:12px;line-height:1.5}
+.meta dt{font-family:var(--f-mono);color:var(--muted);font-size:10.5px;letter-spacing:.06em;padding-top:2px}
+.meta dd{margin:0;font-variant-numeric:tabular-nums;min-width:0}
+.tags{display:flex;gap:4px;flex-wrap:wrap}
+.tag{font-family:var(--f-mono);font-size:10px;letter-spacing:.04em;background:var(--chip);border-radius:4px;padding:2px 6px}
+.tag.u30{background:var(--ink);color:var(--surface)}
+.ex a.more{font-size:12px;color:var(--accent);text-decoration:none;font-weight:500;align-self:flex-start}
+.ex a.more:hover{text-decoration:underline}
+.closed{font-family:var(--f-mono);font-size:10.5px;color:var(--muted)}
+
+@media (min-width:960px){
+  #app{grid-template-rows:auto 1fr}
+  main{grid-template-columns:400px 1fr}
+  #map{position:relative;inset:auto;grid-column:2}
+  #sheet,#sheet[data-size]{position:relative;grid-column:1;grid-row:1;height:auto;border-radius:0;border-top:0;border-right:1px solid var(--line);box-shadow:none}
+  .grab{display:none}
+  .sheet-head{padding-top:12px}
+  header{display:flex;flex-wrap:wrap;align-items:center;column-gap:20px;padding-block:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .bar{padding:0;flex:0 0 auto;min-height:0}
+  .bar h1{font-size:19px;flex:0 0 auto}
+  .bar .dates{display:block}
+  .ftoggle,.dates-m,.fdone{display:none}
+  .filters,header.open .filters{display:contents}
+  header{row-gap:8px}
+  .controls{flex:1 1 360px;max-width:640px;flex-wrap:nowrap}
+  .controls input[type=search]{flex:1 1 auto!important}
+  .controls select{flex:0 0 auto}
+  .chips{flex:1 0 100%}
+}
+@media (prefers-reduced-motion:reduce){#sheet,.pin{transition:none}}
+
+.locbtn{width:34px;height:34px;display:grid;place-items:center;background:var(--surface);color:var(--ink);border:2px solid rgba(0,0,0,.2);border-radius:4px;cursor:pointer;padding:0;background-clip:padding-box}
+.locbtn.on{color:var(--accent)}
+.locbtn.busy svg{animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.me{width:16px;height:16px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.2),0 1px 6px rgba(0,0,0,.35)}
+.toast{position:absolute;left:50%;transform:translateX(-50%);top:calc(56px + env(safe-area-inset-top,0px));z-index:900;background:var(--ink);color:var(--surface);padding:8px 14px;border-radius:8px;font-size:12.5px;max-width:calc(100% - 32px);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.vitem .dist{font-family:var(--f-mono);font-size:11px;color:var(--accent);white-space:nowrap}
+.leaflet-control-layers{background:var(--surface)!important;color:var(--ink);border:2px solid rgba(0,0,0,.2)!important;border-radius:6px!important;font-family:var(--f-body);font-size:13px}
+.leaflet-control-layers-toggle{width:34px!important;height:34px!important;background-size:20px 20px!important}
+.leaflet-control-layers-expanded{padding:8px 12px 8px 8px!important}
+.leaflet-control-layers label{display:block;padding:4px 0}
+.leaflet-control-layers-selector{accent-color:var(--accent)}
+.ex .thumb{display:block;margin:-12px -12px 4px;aspect-ratio:2/1;background:var(--chip);border-radius:10px 10px 0 0;overflow:hidden}
+.ex .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.ex .sum{font-size:13px;line-height:1.65;margin:0;color:var(--ink)}
+.srcnote{font-size:11px;color:var(--muted)}
+</style>
+</head>
+<body>
+
+
+<div id="app">
+  <header id="hdr">
+    <div class="bar">
+      <h1>ART WEEK TOKYO 2026 <span>会場マップ</span></h1>
+      <p class="dates">11.04 WED – 11.08 SUN ／ AWT BUS 11.06–08</p>
+      <button class="ftoggle" id="ftoggle" aria-expanded="false" aria-controls="filters">
+        <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M1 3h12M3 7h8M5 11h4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" fill="none"/></svg>
+        <span>絞り込み</span><b id="fcount" hidden></b>
+      </button>
+    </div>
+    <div class="filters" id="filters">
+    <p class="dates-m">11.04 WED – 11.08 SUN ／ AWT BUS 11.06–08</p>
+    <div class="controls">
+      <input type="search" id="q" placeholder="出展者・会場・展示名で検索" aria-label="検索">
+      <select id="day" aria-label="日付で絞り込み"></select>
+      <select id="genre" aria-label="カテゴリで絞り込み"></select>
+    </div>
+    <div class="chips" id="areas" role="group" aria-label="バスルート"></div>
+    <div class="fdone"><button class="reset" id="freset">条件をクリア</button><button class="done" id="fdone">地図を見る</button></div>
+    </div>
+  </header>
+  <main>
+    <div id="map" aria-label="地図"></div>
+    <section id="sheet" data-size="half" aria-label="会場リスト">
+      <button class="grab" id="grab" aria-label="リストの大きさを切り替え"><span></span></button>
+      <div class="sheet-head"><h2 id="sh-title">会場一覧</h2><span class="count" id="sh-count"></span></div>
+      <div class="scroll" id="scroll"></div>
+    </section>
+  </main>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/maplibre-gl/4.7.1/maplibre-gl.js"></script>
+<script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.0.22/leaflet-maplibre-gl.js"></script>
+<script>
+const V = [{"k": "35.6747,139.7086", "lat": 35.674736, "lng": 139.708649, "name": "ギャラリー38", "addr": "渋谷区神宮前2-30-28", "area": "F 青山・新宿", "ex": [{"id": "gallery-38-ja", "t": "ステファニー・クエール「LIVING SOIL: SACRED ANIMAL」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS F-7（11/6–8運行）", "c": "原宿", "v": "ギャラリー38", "img": "2025/08/AWT_2026_Venues_Gallery-38_Image1_resize-1.jpeg", "s": "マン島拠点の作家が、藁や羊毛を混ぜた粘土で動物を「召喚」するように形づくる彫刻展。"}]}, {"k": "35.6621,139.7140", "lat": 35.66214, "lng": 139.71403, "name": "AWT BAR", "addr": "港区南青山5-4-30 emergence aoyama complex", "area": "E 渋谷・目黒・恵比寿", "ex": [{"id": "awt-bar-ja", "t": "AWT BAR", "g": ["AWT プラットフォーム"], "d": "11.4〜11.8", "h": "AWT BUS E-1 / F-1 / EXP2（11/6–8運行）", "c": "表参道", "v": "AWT BAR", "img": "2025/08/AWT2026-Cocktail-and-Food_02.jpg", "s": "会期中に南青山に開くポップアップバー。新進シェフのフードやアーティストによるカクテルが楽しめる。"}]}, {"k": "35.6492,139.7420", "lat": 35.649234, "lng": 139.742004, "name": "慶應義塾大学 三田キャンパス", "addr": "港区三田2-15-45 慶應義塾大学 三田キャンパス 西校舎ホール", "area": "その他（バス停なし）", "ex": [{"id": "awt-talks-symposium-ja", "t": "AWT TALKS シンポジウム", "g": ["AWT プラットフォーム"], "d": "11.4〜11.8", "h": "AWT BUSの停留所なし", "c": "三田", "v": "慶應義塾大学 三田キャンパス", "img": "2025/08/syposium-1-1024x678-2.jpg", "s": "各分野の有識者を招き、現代社会におけるアートの意義を多角的に考えるシンポジウム。"}]}, {"k": "35.6797,139.8082", "lat": 35.679747, "lng": 139.808192, "name": "東京都現代美術館", "addr": "江東区三好4-1-1 東京都現代美術館", "area": "B 清澄白河・日本橋・京橋", "ex": [{"id": "awt-talks-directors-conversation-ja", "t": "AWT TALKS ディレクターズ・カンバセーション", "g": ["AWT プラットフォーム"], "d": "11.4〜11.8", "h": "AWT BUS B-1（11/6–8運行）", "c": "清澄白河", "v": "東京都現代美術館", "img": "2025/09/talks-dir.jpg", "s": "世界の美術館を率いるディレクターたちが、運営や企画について公開で語り合うトーク。"}, {"id": "museum-of-contemporary-art-tokyo-ja", "t": "多田美波 ─ 光、凛と ゆれる", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS B-1（11/6–8運行）", "c": "清澄白河", "v": "東京都現代美術館", "img": "2025/08/10_Tada_1978_high.jpg", "s": "光を造形の中心に据えた戦後の彫刻家・多田美波の大規模個展。"}]}, {"k": "35.6847,139.7639", "lat": 35.684664, "lng": 139.763864, "name": "アース・ガーデン（丸の内）", "addr": "千代田区丸の内1-3-2 三井住友銀行東館 1F アース・ガーデン", "area": "A 竹橋・大塚・根津", "ex": [{"id": "awt-video-ja", "t": "AWT VIDEO", "g": ["AWT プラットフォーム"], "d": "11.4〜11.8", "h": "AWT BUS A-7 / C-1 / EXP1（11/6–8運行）", "c": "大手町", "v": "アース・ガーデン（丸の内）", "img": "2025/08/AWT-VIDEO_2025_01.jpg", "s": "参加ギャラリーの作家による映像作品のプログラム上映。上海RAMのキュレーターが選出。"}]}, {"k": "35.6788,139.7719", "lat": 35.678813, "lng": 139.77189, "name": "アーティゾン美術館", "addr": "中央区京橋1-7-2", "area": "B 清澄白河・日本橋・京橋", "ex": [{"id": "artizon-museum-ja", "t": "ジャム・セッション 石橋財団コレクション×藤井光　WHOSE LIGHT? —だれのひかりか", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS B-5（11/6–8運行）", "c": "京橋", "v": "アーティゾン美術館", "img": "2025/08/AWT_2026_Venues_ARTIZON_Image_12-1.jpg", "s": "藤井光が「光＝真理」を誰が照らすのかを問い、石橋財団コレクションと新作を並べる展覧会。"}]}, {"k": "35.6388,139.6977", "lat": 35.638765, "lng": 139.69771, "name": "青山目黒", "addr": "目黒区上目黒2-30-6", "area": "E 渋谷・目黒・恵比寿", "ex": [{"id": "aoyama-meguro-ja", "t": "日本国憲法展 2026", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS E-4（11/6–8運行）", "c": "中目黒", "v": "青山目黒", "img": "2026/05/MG_4103.jpg", "s": "憲法の各条文に対応する美術作品を選び、アートを通して憲法を見つめ直す企画展。"}]}, {"k": "35.6191,139.7466", "lat": 35.619127, "lng": 139.7466, "name": "アノマリー", "addr": "品川区東品川1-33-10 TERRADA Art Complex I 4F", "area": "C 銀座・天王洲", "ex": [{"id": "anomaly-ja", "t": "東山詩織個展／小林耕平個展", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS C-5（11/6–8運行）", "c": "天王洲", "v": "アノマリー", "img": "2025/08/AWT_2026_Venues_ANOMALY_Image1.jpg", "s": "人と人の境界や身を守る行為を描く東山詩織の絵画と、小林耕平の個展を同時開催。"}]}, {"k": "35.7098,139.7363", "lat": 35.709792, "lng": 139.736295, "name": "ウェイティングルーム", "addr": "文京区水道2-14-2 長島ビル 1F", "area": "A 竹橋・大塚・根津", "ex": [{"id": "waitingroom-ja", "t": "逆立つ翼のパッチワーク", "g": ["AWT FOCUS"], "d": "11.4〜11.8", "h": "AWT BUS A-3（11/6–8運行）", "c": "江戸川橋", "v": "ウェイティングルーム", "img": "2025/08/Frame-33357-1.webp", "s": "クィアフェミニストコレクティブ「Multiple Spirits」がZINEや出版文化から知の系譜をたどる企画展。"}]}, {"k": "35.6665,139.7091", "lat": 35.666519, "lng": 139.709092, "name": "エスパス ルイ･ヴィトン東京", "addr": "渋谷区神宮前5-7-5 ルイ・ヴィトン表参道ビル 7F", "area": "F 青山・新宿", "ex": [{"id": "espace-louis-vuitton-ja", "t": "INSITU2", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS F-8（11/6–8運行）", "c": "表参道", "v": "エスパス ルイ･ヴィトン東京", "img": "2025/08/Espace-Louis-Vuitton-Tokyo_high-scaled.jpg", "s": "東京・北京・ミュンヘンで同時開催。パフォーマンスやトーク、参加型の体験を届けるプログラム。"}]}, {"k": "35.7359,139.7367", "lat": 35.73592, "lng": 139.736665, "name": "XYZコレクティブ", "addr": "豊島区巣鴨2-13-4 B02", "area": "A 竹橋・大塚・根津", "ex": [{"id": "xyz-collective-ja", "t": "増塩太朗、ソフィー・ニス", "g": ["AWT FOCUS"], "d": "11.4〜11.8", "h": "AWT BUS A-5（11/6–8運行）", "c": "巣鴨", "v": "XYZコレクティブ", "img": "2025/08/Frame-33359-1.webp", "s": "写真家・増塩太朗と彫刻家ソフィー・ニスの2人展。身体・イメージ・言語の関係を考える。"}]}, {"k": "35.6475,139.7143", "lat": 35.64747, "lng": 139.714289, "name": "MEM", "addr": "渋谷区恵比寿1-18-4 NADiff A/P/A/R/T 3F", "area": "D 六本木・広尾", "ex": [{"id": "mem-ja", "t": "「もの」と「こと」と「対話」をめぐって", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS D-4（11/6–8運行）", "c": "恵比寿", "v": "MEM", "img": "2025/08/AWT_2026_Venues_MEM_Image-1.jpg", "s": "「対話」をキーワードに、共同制作から生まれた近現代の美術・写真を紹介するグループ展の第4弾。"}]}, {"k": "35.6538,139.7271", "lat": 35.653823, "lng": 139.727107, "name": "カイカイキキギャラリー", "addr": "港区元麻布2-3-30 元麻布クレストビル B1F", "area": "D 六本木・広尾", "ex": [{"id": "kaikai-kiki-gallery-ja", "t": "UTANHOLE「ZIPGUNSLINGERS」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS D-3（11/6–8運行）", "c": "広尾", "v": "カイカイキキギャラリー", "img": "2025/08/DSC03720-2.jpg", "s": "2001年生まれの画家Utanholeの初の大型個展。"}]}, {"k": "35.6836,139.8090", "lat": 35.683587, "lng": 139.808986, "name": "カナカワニシギャラリー", "addr": "江東区白河4-7-6", "area": "B 清澄白河・日本橋・京橋", "ex": [{"id": "kana-kawanishi-gallery-ja", "t": "EVERYDAY, WITH A DELAY", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS B-6（11/6–8運行）", "c": "清澄白河", "v": "カナカワニシギャラリー", "img": "2025/08/AWT_2026_Images_KANA-KAWANISHI-GALLERY_Composite-1.jpg", "s": "日用品の彫刻や身体を使った作品など、日常を少しずらす3人のグループ展。"}]}, {"k": "35.6619,139.7316", "lat": 35.661888, "lng": 139.731558, "name": "カヨコユウキ ／ コタロウヌカガ ／ ハギワラプロジェクツ", "addr": "港区六本木6-6-9 ピラミデビル 2F", "area": "D 六本木・広尾", "ex": [{"id": "kayokoyuki-ja", "t": "アナ・グランツ「BUZZ ONLY」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS D-1（11/6–8運行）", "c": "六本木", "v": "カヨコユウキ", "img": "2025/08/AWT_2026_Venues_KAYOKOYUKI_Image1_resize-1.jpeg", "s": "ロサンゼルス在住の画家アナ・グランツの日本初個展。具象と抽象を行き来する絵画。"}, {"id": "kotaro-nukaga-ja", "t": "コア・ポア「POINTS OF ENTRY」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS D-1（11/6–8運行）", "c": "六本木", "v": "コタロウヌカガ", "img": "2025/08/AWT_2026_Venues_KOTARO-NUKAGA_Image.jpg", "s": "ペルシャ絨毯から浮世絵まで横断する視覚言語を、手描きと大型木版で組み合わせる作家の個展。"}, {"id": "hagiwara-projects-ja", "t": "土肥美穂展", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS D-1（11/6–8運行）", "c": "六本木", "v": "ハギワラプロジェクツ", "img": "2025/08/AWT_2026_Venues_HAGIWARA-PROJECTS_Image-1.jpg", "s": "真鍮・糸・布・木など多様な素材を組み合わせる土肥美穂の立体作品展。"}]}, {"k": "35.6748,139.7681", "lat": 35.674757, "lng": 139.768108, "name": "ギャラリー小柳", "addr": "中央区銀座1-7-5 小柳ビル 9F", "area": "C 銀座・天王洲", "ex": [{"id": "gallery-koyanagi-ja", "t": "須田悦弘個展", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS C-2（11/6–8運行）", "c": "銀座", "v": "ギャラリー小柳", "img": "2025/08/AWT_2026_Venues_Gallery-Koyanagi_Image_resize-1.jpeg", "s": "朴の木で精緻な花や草を彫り、思いがけない場所に置く須田悦弘の個展。"}]}, {"k": "35.6720,139.7634", "lat": 35.671988, "lng": 139.763361, "name": "銀座メゾンエルメス ル・フォーラム", "addr": "中央区銀座5-4-1 銀座メゾンエルメス 8・9F", "area": "C 銀座・天王洲", "ex": [{"id": "ginza-maison-hermes-le-forum-ja", "t": "アン・ヴェロニカ・ヤンセン「東京、銀座5丁目4-1」", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS C-3（11/6–8運行）", "c": "銀座", "v": "銀座メゾンエルメス ル・フォーラム", "img": "2025/08/Hermes_resize-2.jpg", "s": "レンゾ・ピアノ設計のガラスブロック建築で開かれる、アン・ヴェロニカ・ヤンセンの個展。"}]}, {"k": "35.6898,139.7064", "lat": 35.68977, "lng": 139.70641, "name": "ケンナカハシ", "addr": "新宿区新宿3-1-32 新宿ビル2号館 5F", "area": "F 青山・新宿", "ex": [{"id": "ken-nakahashi-ja", "t": "那須佐和子「敗走者のためのブギウギ」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS F-5（11/6–8運行）", "c": "新宿", "v": "ケンナカハシ", "img": "2025/08/SAWAKONASU.jpg", "s": "画家・那須佐和子の個展。"}]}, {"k": "35.6784,139.7717", "lat": 35.678401, "lng": 139.771681, "name": "コウサクカネチカ", "addr": "中央区京橋1-7-1 TODA BUILDING 3F", "area": "B 清澄白河・日本橋・京橋", "ex": [{"id": "kosaku-kanechika-ja", "t": "舘鼻則孝「HEEL-LESS SHOES」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS B-5（11/6–8運行）", "c": "京橋", "v": "コウサクカネチカ", "img": "2025/08/NT-HlS-25-011.jpg", "s": "舘鼻則孝の代表作「ヒールレスシューズ」を軸にした個展。"}]}, {"k": "35.6653,139.7264", "lat": 35.665289, "lng": 139.726374, "name": "国立新美術館", "addr": "港区六本木7-22-2", "area": "F 青山・新宿", "ex": [{"id": "national-art-center-tokyo-ja", "t": "少女漫画・インフィニティ　萩尾望都×山岸凉子×大和和紀 三人展", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS F-2（11/6–8運行）", "c": "六本木", "v": "国立新美術館", "img": "2025/08/AWT_2026_Venues_NACT_Image_1.jpg", "s": "開館20周年記念。少女漫画黄金期を築いた3人の画業をたどる三人展。"}]}, {"k": "35.6785,139.7718", "lat": 35.67852, "lng": 139.77176, "name": "小山登美夫ギャラリー", "addr": "中央区京橋1-7-1 TODA BUILDING 3F", "area": "B 清澄白河・日本橋・京橋", "ex": [{"id": "tomio-koyama-gallery-ja", "t": "日高理恵子個展", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS B-5（11/6–8運行）", "c": "京橋", "v": "小山登美夫ギャラリー", "img": "2025/08/AWT_2026_Venues_Tomio-Koyama-Gallery_Image4.jpg", "s": "樹を見上げて空との距離を描く日高理恵子の絵画展。"}]}, {"k": "35.6686,139.7619", "lat": 35.668557, "lng": 139.761894, "name": "資生堂ギャラリー", "addr": "中央区銀座8-8-3 東京銀座資生堂ビル地下1F", "area": "C 銀座・天王洲", "ex": [{"id": "shiseido-gallery-ja", "t": "今はいつのことか― 小村雪岱と玉山拓郎", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS C-6（11/6–8運行）", "c": "銀座", "v": "資生堂ギャラリー", "img": "2025/08/8ad685d760f55c3c1eca12d5b05ed415.jpg", "s": "大正〜昭和の美術家・小村雪岱と現代美術家・玉山拓郎、約100年を隔てた二人の表現が出会う展覧会。"}]}, {"k": "35.6716,139.7625", "lat": 35.671593, "lng": 139.762481, "name": "思文閣銀座", "addr": "中央区銀座5-3-12 壹番館ビルディング", "area": "C 銀座・天王洲", "ex": [{"id": "shibunkaku-ja", "t": "メアリー・ウェザーフォード：KOMOREBI", "g": ["AWT FOCUS"], "d": "11.4〜11.8", "h": "AWT BUS C-3（11/6–8運行）", "c": "銀座", "v": "思文閣銀座", "img": "2026/05/SHIBUNGAKU_MW-24.056_shellac-ink-on-Gampi-Torinoko.jpg", "s": "米国の画家メアリー・ウェザーフォードの日本初個展。光・空間・記憶が交差する絵画。"}]}, {"k": "35.6730,139.7664", "lat": 35.673033, "lng": 139.766368, "name": "シャネル・ネクサス・ホール", "addr": "中央区銀座3-5-3 シャネル銀座ビルディング 4F", "area": "C 銀座・天王洲", "ex": [{"id": "chanel-nexus-hall-ja", "t": "ナショナルポートレートギャラリー展 アイコンとイメージメーカー", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS C-2（11/6–8運行）", "c": "銀座", "v": "シャネル・ネクサス・ホール", "img": "2025/08/bcea4895320535167e3aad7da402422d.jpg", "s": "ロンドンの国立肖像画美術館の写真コレクションから、英国カルチャーのアイコン約60点を紹介。"}]}, {"k": "35.6616,139.7310", "lat": 35.661599, "lng": 139.731019, "name": "シュウゴアーツ ／ タカ・イシイギャラリー", "addr": "港区六本木6-5-24 complex665 2F", "area": "D 六本木・広尾", "ex": [{"id": "shugoarts-ja", "t": "安田侃個展", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS D-1（11/6–8運行）", "c": "六本木", "v": "シュウゴアーツ", "img": "2025/08/AWT_2026_Venues_ShugoArts_Image1.jpg", "s": "イタリア拠点の彫刻家・安田侃の、同ギャラリー初の個展。大理石やブロンズの彫刻。"}, {"id": "taka-ishii-gallery-ja", "t": "スターリング・ルビー「OCEAN」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS D-1（11/6–8運行）", "c": "六本木", "v": "タカ・イシイギャラリー", "img": "2025/08/AWT_2026_Venues_TakaIshiiGallery_Image2_resize-1.jpeg", "s": "彫刻・陶・絵画・テキスタイルまで多様な素材を扱うスターリング・ルビーの個展。"}]}, {"k": "35.7218,139.7705", "lat": 35.721813, "lng": 139.770476, "name": "スカイザバスハウス", "addr": "台東区谷中6-1-23 柏湯跡", "area": "A 竹橋・大塚・根津", "ex": [{"id": "scai-the-bathhouse-ja", "t": "土屋信子：ハートのA", "g": ["AWT FOCUS"], "d": "11.4〜11.8", "h": "AWT BUS A-6（11/6–8運行）", "c": "根津", "v": "スカイザバスハウス", "img": "2025/08/scai-1.webp", "s": "身近なものや廃材を組み合わせて立体をつくる土屋信子の個展。銭湯跡のギャラリーで。"}]}, {"k": "35.6192,139.7466", "lat": 35.619168, "lng": 139.746599, "name": "スタンディングパイン", "addr": "品川区東品川1-33-10 TERRADA ART COMPLEX I 3F", "area": "C 銀座・天王洲", "ex": [{"id": "standing-pine-ja", "t": "ジョエル・アンドリアノメアリソア「LE PALAIS DES VENTS（風の宮殿）」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS C-5（11/6–8運行）", "c": "天王洲", "v": "スタンディングパイン", "img": "2025/08/AWT_2026_Venues_STANDINGPINE_Image1-1.jpg", "s": "マダガスカル出身の作家による、彫刻・テキスタイル・建築を横断するインスタレーション。"}]}, {"k": "35.6709,139.7231", "lat": 35.670934, "lng": 139.723097, "name": "スペースアン", "addr": "港区南青山2-4-9 KLO南青山ビル 1F", "area": "F 青山・新宿", "ex": [{"id": "space-un-ja", "t": "ジュリアンノックス：HOW MUCH LIGHT MUST I CONSUME？", "g": ["AWT FOCUS"], "d": "11.4〜11.8", "h": "AWT BUS F-3（11/6–8運行）", "c": "青山一丁目", "v": "スペースアン", "img": "2025/08/Frame-33353-1.webp", "s": "シエラレオネ出身のアーティストによる、口承の伝統に着想した映像作品の展示。"}]}, {"k": "35.6695,139.7663", "lat": 35.669457, "lng": 139.76627, "name": "セイソン＆ベネティエール", "addr": "中央区銀座5-12-6 CURA GINZA 8F", "area": "C 銀座・天王洲", "ex": [{"id": "ceysson-benetiere-ja", "t": "クレア・シェニエ「THE WIND LEFT IN MY HAND」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS C-6（11/6–8運行）", "c": "銀座", "v": "セイソン＆ベネティエール", "img": "2026/05/AWT_2026_Venues_Ceysson-Benetiere-Tokyo_Image_resize-1.jpeg", "s": "フランスの画家クレア・シェニエの日本初個展。抽象と風景のあいだにあるインクの絵画。"}]}, {"k": "35.6571,139.7406", "lat": 35.657097, "lng": 139.740629, "name": "タケニナガワ", "addr": "港区東麻布2-14-8", "area": "D 六本木・広尾", "ex": [{"id": "take-ninagawa-ja", "t": "鴨治晃次：EVERYDAY LIFE", "g": ["AWT FOCUS"], "d": "11.4〜11.8", "h": "AWT BUS D-6（11/6–8運行）", "c": "麻布十番", "v": "タケニナガワ", "img": "2025/08/96f68e7ffae9cd213248392a207ea95f-1.webp", "s": "ポーランドで活動を続ける鴨治晃次の、日常と記憶が交差する静かな作品世界。"}]}, {"k": "35.6619,139.7315", "lat": 35.661923, "lng": 139.731496, "name": "タロウナス", "addr": "港区六本木6-6-9 ピラミデビル 4F", "area": "D 六本木・広尾", "ex": [{"id": "taro-nasu-ja", "t": "フィリップ・パレーノ個展", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS D-1（11/6–8運行）", "c": "六本木", "v": "タロウナス", "img": "2025/08/AWT_2026_Venues_TARONASU_Image2.jpg", "s": "フランスのアーティスト、フィリップ・パレーノの個展。"}]}, {"k": "35.6209,139.7486", "lat": 35.620937, "lng": 139.748584, "name": "TOKYO ATLAS（WHAT MUSEUM）", "addr": "品川区東品川2-6-10 寺田倉庫 G号 WHAT MUSEUM", "area": "C 銀座・天王洲", "ex": [{"id": "tokyo-atlas", "t": "TOKYO ATLAS関連企画「座標」", "g": ["パートナー"], "d": "11.4〜11.8", "h": "AWT BUS C-5（11/6–8運行）", "c": "天王洲", "v": "TOKYO ATLAS（WHAT MUSEUM）", "img": "2026/10/76ee2563d3ee9e69f1bddce9c06e85b9.jpg", "s": "TOKYO ATLASに関連する企画展「座標」。"}]}, {"k": "35.6824,139.6873", "lat": 35.682448, "lng": 139.687328, "name": "東京オペラシティ アートギャラリー", "addr": "新宿区西新宿3-20-2", "area": "F 青山・新宿", "ex": [{"id": "tokyo-opera-city-art-gallery-ja", "t": "種と根っこ─都市の耕し方", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS F-6（11/6–8運行）", "c": "初台", "v": "東京オペラシティ アートギャラリー", "img": "2025/08/AWT_2026_Venues_OPERACITY_Image_7.jpg", "s": "都市の隙間に生まれる生態系と向き合う作家たちを紹介するグループ展。"}]}, {"k": "35.6678,139.7624", "lat": 35.667785, "lng": 139.76236, "name": "東京画廊＋BTAP", "addr": "中央区銀座8-10-5 第4秀和ビル 7F", "area": "C 銀座・天王洲", "ex": [{"id": "tokyo-gallery-btap-ja", "t": "菅木志雄「WORKS ON PAPER」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS C-6（11/6–8運行）", "c": "銀座", "v": "東京画廊＋BTAP", "img": "2025/08/AWT_2026_Venues_TOKYOGalleryBTAP_Image10-1.jpg", "s": "「もの派」を代表する菅木志雄の、平面作品に焦点を当てた展示。"}]}, {"k": "35.6905,139.7547", "lat": 35.690543, "lng": 139.754693, "name": "東京国立近代美術館", "addr": "千代田区北の丸公園3-1", "area": "A 竹橋・大塚・根津", "ex": [{"id": "national-museum-of-modern-art-tokyo-ja", "t": "竹久夢二　時代を創る表現者", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS A-1（11/6–8運行）", "c": "竹橋", "v": "東京国立近代美術館", "img": "2025/08/AWT_2026_Venues_MOMAT_Imag.jpeg", "s": "大正ロマンを象徴する画家・詩人・デザイナー、竹久夢二の仕事を紹介する展覧会。"}]}, {"k": "35.6921,139.7600", "lat": 35.692136, "lng": 139.760037, "name": "TOKYO JAZZ CLUB", "addr": "千代田区神田錦町3-11-15", "area": "その他（バス停なし）", "ex": [{"id": "tokyo-jazz-club-ja", "t": "TOKYO JAZZ CLUB", "g": ["パートナー"], "d": "11.4〜11.8", "h": "AWT BUSの停留所なし", "c": "神保町", "v": "TOKYO JAZZ CLUB", "img": "2026/10/TJC-Venue-IMG_5303-landscape.jpg", "s": "元カプセルホテルの全8フロアで、アート・音楽・飲食が共存する没入型の展示＆マーケット。"}]}, {"k": "35.6416,139.7133", "lat": 35.641641, "lng": 139.713289, "name": "東京都写真美術館", "addr": "目黒区三田1-13-3 恵比寿ガーデンプレイス内", "area": "E 渋谷・目黒・恵比寿", "ex": [{"id": "tokyo-photographic-art-museum-ja", "t": "デュエット――アジアン・コンテンポラリー", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS E-8（11/6–8運行）", "c": "恵比寿", "v": "東京都写真美術館", "img": "2025/08/1733-1.jpg", "s": "経済格差や災害、ジェンダーなどのテーマで、日本と中国の現代写真を紹介。"}]}, {"k": "35.6369,139.7190", "lat": 35.636947, "lng": 139.719041, "name": "東京都庭園美術館", "addr": "港区白金台5-21-9", "area": "E 渋谷・目黒・恵比寿", "ex": [{"id": "tokyo-metropolitan-teien-art-museum-ja", "t": "マリメッコ展　模様のちから", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS E-7（11/6–8運行）", "c": "目黒", "v": "東京都庭園美術館", "img": "2025/08/AWT_2026_Venues_TEIEN_Image1-1.jpg", "s": "マリメッコのプリント・デザインの創造の歴史を、ドレスやファブリックでたどる展覧会。"}]}, {"k": "35.6593,139.7046", "lat": 35.659296, "lng": 139.704646, "name": "ナンヅカ", "addr": "渋谷区渋谷2-17-1 渋谷アクシュ 302", "area": "E 渋谷・目黒・恵比寿", "ex": [{"id": "nanzuka-ja", "t": "蔦谷喜一展 〜曽田コレクション〜", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS E-2（11/6–8運行）", "c": "渋谷", "v": "ナンヅカ", "img": "2025/08/K_034-1-1.jpg", "s": "「きいちのぬりえ」で知られる塗り絵作家・蔦谷喜一の作品展。"}]}, {"k": "35.6638,139.7280", "lat": 35.66376, "lng": 139.728017, "name": "日動コンテンポラリーアート", "addr": "港区六本木7-21-24 102", "area": "F 青山・新宿", "ex": [{"id": "nca-nichido-contemporary-art-ja", "t": "劉致宏（リュウ・ジーホン）「パーキング」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS F-2（11/6–8運行）", "c": "六本木", "v": "日動コンテンポラリーアート", "img": "2025/08/AWT_2026_Venues_nca-_-nichido-contemporary-art_Image.jpg", "s": "台湾の作家・劉致宏の個展。旅の風景と日常の偶然が重なる絵画や立体。"}]}, {"k": "35.6953,139.7834", "lat": 35.695319, "lng": 139.783404, "name": "パーセル", "addr": "中央区日本橋馬喰町2-2-1 DDD HOTEL 1F", "area": "B 清澄白河・日本橋・京橋", "ex": [{"id": "parcel-ja", "t": "BIEN個展", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS B-4（11/6–8運行）", "c": "日本橋", "v": "パーセル", "img": "2026/05/AWT_2026_Venues_PARCEL_Image_resize-1.jpeg", "s": "アニメ表現や記号の輪郭を解体・再構築するBIENの個展。新作を発表予定。"}]}, {"k": "35.6574,139.7429", "lat": 35.657404, "lng": 139.742912, "name": "PGI", "addr": "港区東麻布2-3-4 TKBビル 3F", "area": "C 銀座・天王洲", "ex": [{"id": "pgi-ja", "t": "竹之内祐幸「SLEEPWALK」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS C-4（11/6–8運行）", "c": "麻布十番", "v": "PGI", "img": "2025/08/2026_7759.jpg", "s": "日常や親しい人を撮り続ける写真家・竹之内祐幸のスナップ写真展。"}]}, {"k": "35.6672,139.7135", "lat": 35.667167, "lng": 139.713509, "name": "ファーガス・マカフリー", "addr": "港区北青山3-5-9", "area": "F 青山・新宿", "ex": [{"id": "fergus-mccaffrey-ja", "t": "ポール・ウォラック「DIVISIBLE –分けられる」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS F-8（11/6–8運行）", "c": "表参道", "v": "ファーガス・マカフリー", "img": "2025/08/WALL-0030_Since-The-Day-Before-2022_0026.jpg", "s": "パリ拠点の作家ポール・ウォラックのアジア初個展。"}]}, {"k": "35.7354,139.7246", "lat": 35.735392, "lng": 139.724619, "name": "フイギユア ／ ミサコ＆ローゼン", "addr": "豊島区北大塚3-27-6 2F", "area": "A 竹橋・大塚・根津", "ex": [{"id": "fig-ja", "t": "岡田理個展", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS A-4（11/6–8運行）", "c": "大塚", "v": "フイギユア", "img": "2025/08/a17be7c5cbe8cbf43dec14c3183b6f06.jpg", "s": "ドローイングの感覚で土を形にする、岡田理のセラミック作品展。"}, {"id": "misako-rosen-ja", "t": "エリカ・ヴェルズッティ：彫刻の肖像", "g": ["AWT FOCUS"], "d": "11.4〜11.8", "h": "AWT BUS A-4（11/6–8運行）", "c": "大塚", "v": "ミサコ＆ローゼン", "img": "2025/08/misakoimage.webp", "s": "ブラジル出身のエリカ・ヴェルズッティの個展。彫刻とドローイングの関係を探る。"}]}, {"k": "35.6627,139.7429", "lat": 35.662688, "lng": 139.742879, "name": "ペース・ギャラリー", "addr": "港区虎ノ門5-8-1 麻布台ガーデンヒルズプラザ A", "area": "D 六本木・広尾", "ex": [{"id": "pace-gallery-ja", "t": "アリシア・クワデ「LA PÊCHE MIRACULEUSE」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS D-7（11/6–8運行）", "c": "神谷町", "v": "ペース・ギャラリー", "img": "2025/08/AK_S-2197_Tunnel-Tell-Ceci-Sera-Persicum_Roman-Marz_03.09.20267.jpg", "s": "石・ブロンズ・鏡などで空間と時間の認識を問う、アリシア・クワデの彫刻展。"}]}, {"k": "35.6620,139.7315", "lat": 35.661979, "lng": 139.731464, "name": "ペロタン東京", "addr": "港区六本木6-6-9 ピラミデビル 1F", "area": "D 六本木・広尾", "ex": [{"id": "perrotin-ja", "t": "ヘルナン・バス「TIME TO SHINE!（THE SALESMEN）」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS D-1（11/6–8運行）", "c": "六本木", "v": "ペロタン東京", "img": "2025/08/AWT_2026_Venues_Perrotin_Image5Resize-1.jpeg", "s": "マイアミ拠点の画家ヘルナン・バスによる新作シリーズの個展。"}]}, {"k": "35.6743,139.7679", "lat": 35.674304, "lng": 139.767945, "name": "ポーラ ミュージアム アネックス", "addr": "中央区銀座1-7-7 ポーラ銀座ビル 3F", "area": "C 銀座・天王洲", "ex": [{"id": "pola-museum-annex-ja", "t": "清川あさみ｜名和晃平「INVISIBLE GARDEN」", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS C-2（11/6–8運行）", "c": "銀座", "v": "ポーラ ミュージアム アネックス", "img": "2026/05/ac8fb719ced561da2e37f8c2dc1fdb09-1.jpeg", "s": "美術家・清川あさみと彫刻家・名和晃平の二人展。入場無料。"}]}, {"k": "35.6378,139.7026", "lat": 35.637804, "lng": 139.702576, "name": "ポエティック・スケープ", "addr": "目黒区中目黒4-4-10 1F", "area": "E 渋谷・目黒・恵比寿", "ex": [{"id": "poetic-scape-ja", "t": "野村浩「NANIGASHI MURMURATION」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS E-5（11/6–8運行）", "c": "中目黒", "v": "ポエティック・スケープ", "img": "2025/08/dd8ba627c8ef61a92511d96500a600b8.jpg", "s": "SNSのある鳥を「NANIGASHI」としてアイコン化し、風景画や映像で展開する野村浩の展示。"}]}, {"k": "35.6728,139.7132", "lat": 35.672776, "lng": 139.713203, "name": "マホクボタギャラリー", "addr": "渋谷区神宮前2-4-7 フレスカ神宮前 102", "area": "F 青山・新宿", "ex": [{"id": "institution-gallery-14008", "t": "小川信治「マリアの梯子」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS F-4（11/6–8運行）", "c": "外苑前", "v": "マホクボタギャラリー", "img": "2026/08/AWT_2026_Venues_MAHO-KUBOTA-GALLERY_Image.jpg", "s": "自ら定めた「設定」を精緻な油彩や鉛筆で描き出す、小川信治の個展。"}]}, {"k": "35.6501,139.7311", "lat": 35.650122, "lng": 139.731066, "name": "ミサシンギャラリー", "addr": "港区南麻布3-9-11 パインコーストハイツ 1F", "area": "D 六本木・広尾", "ex": [{"id": "misa-shin-gallery-ja", "t": "青柳菜摘：有り得べき言葉、有り得べき世界", "g": ["AWT FOCUS"], "d": "11.4〜11.8", "h": "AWT BUS D-5（11/6–8運行）", "c": "広尾", "v": "ミサシンギャラリー", "img": "2025/08/Frame-33351-1.webp", "s": "マルチメディアアーティストで詩人の青柳菜摘の個展。細井美裕との共作も展示。"}]}, {"k": "35.6967,139.7392", "lat": 35.696696, "lng": 139.739224, "name": "ミヅマアートギャラリー", "addr": "新宿区市谷田町3-13 神楽ビル 2F", "area": "A 竹橋・大塚・根津", "ex": [{"id": "mizuma-art-gallery-ja", "t": "棚田康司「愛をみる」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS A-2（11/6–8運行）", "c": "飯田橋", "v": "ミヅマアートギャラリー", "img": "2025/08/AWT_2026_Venues_MIZUMA-ART-GALLERY_Image_resize-1.jpg", "s": "一本の木から人間像を彫り出す「一木造り」の彫刻家・棚田康司の個展。"}]}, {"k": "35.6915,139.8095", "lat": 35.691498, "lng": 139.809453, "name": "無人島プロダクション", "addr": "墨田区江東橋5-10-5", "area": "B 清澄白河・日本橋・京橋", "ex": [{"id": "mujin-to-production-ja", "t": "日本国憲法展 2026", "g": ["AWT FOCUS"], "d": "11.4〜11.8", "h": "AWT BUS B-2（11/6–8運行）", "c": "錦糸町", "v": "無人島プロダクション", "img": "2025/08/Mujinto_2nd_1-1-1.webp", "s": "2023年から続く「日本国憲法展」の2026年版。作家たちの作品を通して憲法を今日の社会から考える。"}]}, {"k": "35.6605,139.7293", "lat": 35.660462, "lng": 139.729279, "name": "森美術館", "addr": "港区六本木6-10-1 六本木ヒルズ森タワー 53F", "area": "D 六本木・広尾", "ex": [{"id": "mori-art-museum-ja", "t": "森万里子：燦燦（さんさん）", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS D-2（11/6–8運行）", "c": "六本木", "v": "森美術館", "img": "2025/08/MoriArtMuseum_resize-1.jpeg", "s": "美術・哲学・科学を統合する森万里子の大規模個展。90年代の作品から最新作まで。"}]}, {"k": "35.6785,139.7715", "lat": 35.678522, "lng": 139.77155, "name": "ユタカキクタケギャラリー", "addr": "中央区京橋1-7-1 TODA BUILDING 3F", "area": "B 清澄白河・日本橋・京橋", "ex": [{"id": "yutaka-kikutake-gallery-ja", "t": "THE QUIET", "g": ["AWT FOCUS"], "d": "11.4〜11.8", "h": "AWT BUS B-5（11/6–8運行）", "c": "京橋", "v": "ユタカキクタケギャラリー", "img": "2025/08/Rectangle-1477-1.webp", "s": "国内外6名の画家の作品で、余白・沈黙・抑制された絵画表現の可能性を考える。"}]}, {"k": "35.6939,139.7873", "lat": 35.693873, "lng": 139.787278, "name": "ユミコチバアソシエイツ", "addr": "中央区東日本橋2-22-1 クロスシー東日本橋ビル 1F", "area": "B 清澄白河・日本橋・京橋", "ex": [{"id": "yumiko-chiba-associates-ja", "t": "アラン・ソンフィスト「消えゆく世界の残響」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS B-3（11/6–8運行）", "c": "日本橋", "v": "ユミコチバアソシエイツ", "img": "2025/08/QueenAlexandrasBirdwingMeetingPaulGauguin.jpg", "s": "環境アートの先駆者アラン・ソンフィストの個展。"}]}, {"k": "35.6268,139.7090", "lat": 35.62675, "lng": 139.708965, "name": "リーサヤ", "addr": "目黒区下目黒3-14-2", "area": "E 渋谷・目黒・恵比寿", "ex": [{"id": "leesaya-ja", "t": "安藤晶子「CHORUS」", "g": ["ギャラリー"], "d": "11.4〜11.8", "h": "AWT BUS E-6（11/6–8運行）", "c": "目黒", "v": "リーサヤ", "img": "2025/08/artwork_20260818_001.jpg", "s": "身近な事物や風景を手がかりに、水彩・油彩・コラージュを行き来する安藤晶子の絵画展。"}]}, {"k": "35.6493,139.7001", "lat": 35.649258, "lng": 139.700122, "name": "ルイナール シャンパーニュ＆アートバー", "addr": "渋谷区猿楽町16-15 代官山T-SITE GARDEN GALLERY", "area": "E 渋谷・目黒・恵比寿", "ex": [{"id": "ruinart-champagne-art-bar-2", "t": "RUINART × TADASHI KAWAMATA: CONVERSATIONS WITH NATURE 2026", "g": ["パートナー"], "d": "11.4〜11.8", "h": "AWT BUS E-3（11/6–8運行）", "c": "代官山", "v": "ルイナール シャンパーニュ＆アートバー", "img": "2025/10/RUINART_CWN_FLORIE_BERGER_091A0301.jpeg", "s": "シャンパーニュ・メゾンのルイナールと川俣正による、自然との関係をテーマにしたアートとバー。"}]}, {"k": "35.6707,139.7134", "lat": 35.670725, "lng": 139.713358, "name": "ワタリウム美術館", "addr": "渋谷区神宮前3-7-6", "area": "F 青山・新宿", "ex": [{"id": "watari-um-ja", "t": "没後20年　ナムジュン・パイク｜じゅげむ展", "g": ["美術館"], "d": "11.4〜11.8", "h": "AWT BUS F-4（11/6–8運行）", "c": "外苑前", "v": "ワタリウム美術館", "img": "2025/08/AWT_2026_Venues_WATARIUM_Image.jpg", "s": "メディアアートの先駆者ナムジュン・パイクの個展。ワタリウムと半世紀続いた協働の作品も。"}]}];
+const AREAS = [["A 竹橋・大塚・根津", "ginza"], ["B 清澄白河・日本橋・京橋", "tokyo"], ["C 銀座・天王洲", "roppongi"], ["D 六本木・広尾", "gaienmae"], ["E 渋谷・目黒・恵比寿", "omotesando"], ["F 青山・新宿", "harajuku"], ["その他（バス停なし）", "daikanyama"]];
+const AREA_KEY = Object.fromEntries(AREAS);
+const AORD = Object.fromEntries(AREAS.map(([a],i)=>[a,i]));
+V.sort((a,b)=>(a.k!=="KK")-(b.k!=="KK") || AORD[a.area]-AORD[b.area] || b.ex.length-a.ex.length);
+const cvar = a => `var(--a-${AREA_KEY[a]||'omotesando'})`;
+const WD = ["日","月","火","水","木","金","土"];
+const BASE = "https://www.artweektokyo.com/institution-gallery/";
+const IMG = "https://www.artweektokyo.com/wp-content/uploads/";
+
+// ---- date parsing ("10.30〜11.8", "10.30〜", "11.3〜2027.2.28", "11.7のみ")
+function pd(s){ const p=s.split(".").map(Number); return p.length===3? new Date(p[0],p[1]-1,p[2]) : new Date(2026,p[0]-1,p[1]); }
+function range(d){
+  if(d.endsWith("のみ")){ const x=pd(d.replace("のみ","")); return [x,x]; }
+  const [a,b]=d.split("〜"); return [pd(a), b? pd(b) : new Date(2026,10,8)];
+}
+V.forEach(v=>v.ex.forEach(e=>{ e.r=range(e.d); e.all=(e.t+" "+e.c+" "+e.v+" "+v.name).toLowerCase(); }));
+
+const DAYS=[]; for(let d=new Date(2026,10,4); d<=new Date(2026,10,8); d=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1)) DAYS.push(d);
+const fmt = d => `${d.getMonth()+1}.${d.getDate()}（${WD[d.getDay()]}）`;
+const same = (a,b)=>a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate();
+
+// ---- state
+const st = { areas:new Set(), day:"", genre:"", q:"", sel:null };
+const today = new Date(); const tIdx = DAYS.findIndex(d=>same(d,today));
+
+// ---- controls
+const daySel=document.getElementById("day");
+daySel.innerHTML = `<option value="">全日程</option>` + DAYS.map((d,i)=>`<option value="${i}">${fmt(d)}${i===tIdx?" 今日":""}</option>`).join("");
+if(tIdx>=0){ daySel.value=String(tIdx); st.day=String(tIdx); }
+const GEN=["美術館","ギャラリー","AWT FOCUS","AWT プラットフォーム","パートナー"];
+const genSel=document.getElementById("genre");
+genSel.innerHTML = `<option value="">全カテゴリ</option>` + GEN.map(g=>`<option>${g}</option>`).join("");
+const areaBox=document.getElementById("areas");
+function areaCount(a){ return V.filter(v=>v.area===a).reduce((n,v)=>n+v.ex.length,0); }
+areaBox.innerHTML = AREAS.map(([a])=>`<button class="chip" aria-pressed="false" data-a="${a}" style="--c:${cvar(a)}"><i></i>${a}<b>${areaCount(a)}</b></button>`).join("");
+areaBox.addEventListener("click",e=>{ const b=e.target.closest(".chip"); if(!b) return;
+  const a=b.dataset.a; st.areas.has(a)?st.areas.delete(a):st.areas.add(a); b.setAttribute("aria-pressed",st.areas.has(a));
+  st.sel=null; render(true); });
+daySel.onchange=()=>{ st.day=daySel.value; render(); };
+genSel.onchange=()=>{ st.genre=genSel.value; render(); };
+let qt; document.getElementById("q").addEventListener("input",e=>{ clearTimeout(qt); qt=setTimeout(()=>{ st.q=e.target.value.trim().toLowerCase(); st.sel=null; render(); },150); });
+
+// ---- filter panel (phones)
+const hdr=document.getElementById("hdr"), ft=document.getElementById("ftoggle");
+function setOpen(o){ hdr.classList.toggle("open",o); ft.setAttribute("aria-expanded",o); }
+ft.onclick=()=>setOpen(!hdr.classList.contains("open"));
+document.getElementById("fdone").onclick=()=>setOpen(false);
+document.getElementById("freset").onclick=()=>{
+  st.areas.clear(); areaBox.querySelectorAll(".chip").forEach(b=>b.setAttribute("aria-pressed","false"));
+  st.day=""; daySel.value=""; st.genre=""; genSel.value=""; st.q=""; document.getElementById("q").value=""; st.sel=null; render();
+};
+function updateBadge(){
+  const n=st.areas.size+(st.day!==""?1:0)+(st.genre?1:0)+(st.q?1:0);
+  const b=document.getElementById("fcount"); b.hidden=!n; b.textContent=n;
+}
+
+// ---- filtering
+function exMatch(e){
+  if(st.genre && !e.g.includes(st.genre)) return false;
+  if(st.q && !e.all.includes(st.q)) return false;
+  return true;
+}
+function exOpen(e){ if(st.day==="") return true; const d=DAYS[+st.day]; return e.r[0]<=d && d<=e.r[1]; }
+function visible(v){
+  if(st.areas.size && !st.areas.has(v.area)) return [];
+  return v.ex.filter(e=>exMatch(e)&&exOpen(e));
+}
+
+// ---- map
+const map = L.map("map",{zoomControl:true,attributionControl:true,minZoom:10,maxZoom:19}).setView([35.664,139.722],14);
+map.zoomControl.setPosition("topright");
+const ATTR='地図：<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">国土地理院</a> ／ データ：アートウィーク東京 公式サイト';
+const DATA_ATTR='データ：アートウィーク東京 公式サイト';
+const OFM_ATTR='<a href="https://openfreemap.org" target="_blank" rel="noopener">OpenFreeMap</a> &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> ／ '+DATA_ATTR;
+// Japanese-only labels on OpenFreeMap vector styles
+function jaStyle(name){
+  return fetch(`https://tiles.openfreemap.org/styles/${name}`).then(r=>r.json()).then(st=>{
+    st.layers.forEach(l=>{ const tf=l.layout&&l.layout["text-field"];
+      if(tf && JSON.stringify(tf).includes("name")) l.layout["text-field"]=["coalesce",["get","name:ja"],["get","name"],["get","name:latin"]]; });
+    return st; });
+}
+function vectorBase(name){
+  const g=L.layerGroup(); g._name=name; g.options={attribution:OFM_ATTR}; g.getAttribution=()=>OFM_ATTR;
+  g.onAdd=function(m){ L.LayerGroup.prototype.onAdd.call(this,m);
+    if(!this._gl){ jaStyle(name).then(st=>{ this._gl=L.maplibreGL({style:st,localIdeographFontFamily:'"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif'}); if(this._map) this.addLayer(this._gl); }).catch(()=>toast("地図スタイルを読み込めませんでした")); }
+    else this.addLayer(this._gl); };
+  return g;
+}
+const BASES={
+  "標準": vectorBase("liberty"),
+  "ミニマル": vectorBase("positron"),
+  "詳細（国土地理院）": L.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png",{maxZoom:18,attribution:ATTR})
+};
+let baseName="標準"; try{ const v=localStorage.getItem("da26-base"); if(v && BASES[v]) baseName=v; }catch(e){}
+BASES[baseName].addTo(map);
+L.control.layers(BASES,null,{position:"topright",collapsed:true}).addTo(map);
+map.on("baselayerchange",e=>{ try{ localStorage.setItem("da26-base",e.name); }catch(_){} });
+
+const markers={};
+V.forEach(v=>{
+  let icon;
+  if(v.k==="KK"){
+    icon=L.divIcon({className:"",html:`<div class="kkpin">AUTOBAHN<small>KK線 メイン会場</small></div>`,iconSize:null,iconAnchor:[-10,22]});
+  } else {
+    icon=L.divIcon({className:"",html:`<div class="pin"></div>`,iconSize:[26,26],iconAnchor:[13,13]});
+  }
+  const m=L.marker([v.lat,v.lng],{icon,keyboard:true,title:v.name,riseOnHover:true}).addTo(map);
+  m.on("click",()=>select(v.k,false));
+  markers[v.k]=m;
+});
+
+function paintMarkers(){
+  V.forEach(v=>{
+    const el=markers[v.k].getElement(); if(!el) return;
+    const node=el.firstElementChild; const n=visible(v).length;
+    if(v.k!=="KK"){
+      node.style.setProperty("--c",cvar(v.area));
+      const s = n>=4?32: n>=2?27:22; node.style.setProperty("--s",s+"px");
+      node.textContent = n>1? n : "";
+    } else {
+      node.querySelector("small").textContent = `KK線 メイン会場 · ${n}展示`;
+    }
+    node.classList.toggle("dim", n===0);
+    node.classList.toggle("sel", st.sel===v.k);
+    markers[v.k].setZIndexOffset(st.sel===v.k?1000:(n?100:0));
+  });
+}
+
+// ---- current location
+let me=null, meMarker=null, meCircle=null, firstFix=true, watching=false;
+const toastEl=document.createElement("div"); toastEl.className="toast"; toastEl.hidden=true; document.querySelector("main").appendChild(toastEl);
+let tt; function toast(t){ toastEl.textContent=t; toastEl.hidden=false; clearTimeout(tt); tt=setTimeout(()=>toastEl.hidden=true,3500); }
+const LocCtl=L.Control.extend({options:{position:"topright"},onAdd(){
+  const b=L.DomUtil.create("button","locbtn"); b.type="button"; b.title="現在地を表示"; b.setAttribute("aria-label","現在地を表示");
+  b.innerHTML='<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4" fill="currentColor"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="12" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+  L.DomEvent.disableClickPropagation(b);
+  b.onclick=()=>{ if(me){ panTo([me.lat,me.lng],Math.max(map.getZoom(),16)); return; } startLocate(); };
+  this.btn=b; return b; }});
+const loc=new LocCtl(); map.addControl(loc);
+function startLocate(){
+  if(!("geolocation" in navigator)){ toast("このブラウザは位置情報に対応していません"); return; }
+  if(watching) return; watching=true; loc.btn.classList.add("busy"); firstFix=true;
+  map.locate({watch:true,enableHighAccuracy:true,setView:false,maximumAge:10000,timeout:20000});
+}
+map.on("locationfound",e=>{
+  me=e.latlng; loc.btn.classList.remove("busy"); loc.btn.classList.add("on");
+  if(!meMarker){ meCircle=L.circle(me,{radius:e.accuracy,color:"#1a73e8",weight:1,opacity:.4,fillOpacity:.12,interactive:false}).addTo(map);
+    meMarker=L.marker(me,{icon:L.divIcon({className:"",html:'<div class="me"></div>',iconSize:[16,16],iconAnchor:[8,8]}),zIndexOffset:2000,interactive:false}).addTo(map); }
+  else { meMarker.setLatLng(me); meCircle.setLatLng(me).setRadius(e.accuracy); }
+  if(firstFix){ firstFix=false; panTo([me.lat,me.lng],Math.max(map.getZoom(),15)); }
+  if(!st.sel) renderList();
+});
+map.on("locationerror",e=>{
+  watching=false; loc.btn.classList.remove("busy");
+  toast(e.code===1? "位置情報の利用が許可されていません。ブラウザの設定で許可してください" : "現在地を取得できませんでした");
+});
+function distM(v){ return me? map.distance(me,[v.lat,v.lng]) : null; }
+function fmtDist(m){ const min=Math.max(1,Math.round(m/80)); return (m<1000? Math.round(m/10)*10+"m" : (m/1000).toFixed(1)+"km")+" · 徒歩"+min+"分"; }
+function panTo(ll,z){
+  if(!wide()){ const p=map.project(ll,z); const h=sheet.getBoundingClientRect().height; map.flyTo(map.unproject(p.add([0,h/2]),z),z,{duration:.5}); }
+  else map.flyTo(ll,z,{duration:.5});
+}
+
+// ---- sheet
+const sheet=document.getElementById("sheet"), scroller=document.getElementById("scroll");
+const wide=()=>matchMedia("(min-width:960px)").matches;
+document.getElementById("grab").onclick=()=>{ const s=sheet.dataset.size; sheet.dataset.size = s==="peek"?"half": s==="half"?"full":"peek"; setTimeout(()=>map.invalidateSize(),260); };
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function renderList(){
+  let rows=V.map(v=>[v,visible(v)]).filter(([,x])=>x.length);
+  if(me) rows=rows.slice().sort((a,b)=>distM(a[0])-distM(b[0]));
+  const n=rows.reduce((a,[,x])=>a+x.length,0);
+  document.getElementById("sh-title").textContent = (st.day===""? "会場一覧" : `${fmt(DAYS[+st.day])} に開いている会場`) + (me?"（近い順）":"");
+  document.getElementById("sh-count").textContent = `${rows.length}会場 · ${n}展示`;
+  if(!rows.length){ scroller.innerHTML=`<p class="empty">条件に合う展示がありません。ルート・日付・カテゴリの絞り込みをゆるめてください。</p>`; return; }
+  scroller.innerHTML = `<ul class="vlist">`+rows.map(([v,x])=>`<li><button class="vitem" data-k="${esc(v.k)}" style="--c:${v.k==="KK"?"var(--kk)":cvar(v.area)}">
+    <span class="dot"></span><span class="nm">${esc(v.name)}</span><span class="n">${x.length}</span>
+    <span class="sub">${me?`<span class="dist">${fmtDist(distM(v))}</span> · `:""}${esc(v.area)} · ${esc(x.map(e=>e.t).slice(0,3).join(" ／ "))}${x.length>3?" ほか":""}</span></button></li>`).join("")+`</ul>`;
+}
+scroller.addEventListener("click",e=>{
+  const b=e.target.closest(".vitem"); if(b){ select(b.dataset.k,true); return; }
+  if(e.target.closest(".back")){ st.sel=null; render(); }
+});
+
+function renderDetail(v){
+  const vis=new Set(visible(v).map(e=>e.id));
+  const list=v.ex.filter(exMatch);
+  const gq=encodeURIComponent(v.k==="KK"?"東京交通会館":v.addr.replace(/（.*?）/g,"").split(" ")[0]);
+  const color=v.k==="KK"?"var(--kk)":cvar(v.area);
+  document.getElementById("sh-title").textContent="会場の詳細";
+  document.getElementById("sh-count").textContent=`${list.length}展示`;
+  scroller.innerHTML=`<div class="detail" style="--c:${color}">
+    <button class="back">← 一覧に戻る</button>
+    <div class="dhead"><span class="eyebrow">${esc(v.area)}</span><h3>${esc(v.name)}</h3><div class="addr">${esc(v.addr)}</div></div>
+    <div class="links"><a class="btn solid" href="https://www.google.com/maps/dir/?api=1&destination=${v.lat},${v.lng}&travelmode=walking" target="_blank" rel="noopener">Googleマップで経路</a>
+    ${v.k==="KK"?`<a class="btn" href="https://artsticker.app/events/155300" target="_blank" rel="noopener">チケット（ArtSticker）</a>`:""}</div>
+    ${v.k==="KK"?`<p class="note">会期は 10.30–11.3 の5日間のみ。10:00–19:00（10/30は12:00から、11/3は17:00まで）。有料：1日券 前売3,000円／当日3,500円、学生 前売1,000円／当日1,500円。入口は東京交通会館のとなり。地図上の線はおおよその位置です。</p>`:""}
+    <p class="srcnote">画像は公式サイトより。説明は公式ページの内容を要約したものです。</p>
+    <div class="exs">${list.map(e=>`<article class="ex ${vis.has(e.id)?"":"off"}">
+      ${e.img?`<a class="thumb" href="${BASE}${e.id}/" target="_blank" rel="noopener"><img src="${IMG}${encodeURI(e.img)}" alt="" loading="lazy" onerror="this.parentNode.remove()"></a>`:""}
+      <h4>${esc(e.t)}</h4>
+      ${e.s?`<p class="sum">${esc(e.s)}</p>`:""}
+      
+      <dl class="meta"><dt>AREA</dt><dd>${esc(e.c)}</dd><dt>BUS</dt><dd>${esc(e.h)}</dd>${e.v!==v.name&&v.k!=="KK"?`<dt>VENUE</dt><dd>${esc(e.v)}</dd>`:""}</dl>
+      <div class="tags">${e.g.map(g=>`<span class="tag ${g==="UNDER30"?"u30":""}">${g}</span>`).join("")}</div>
+      ${vis.has(e.id)?"":`<span class="closed">選択した日は会期外です</span>`}
+      <a class="more" href="${BASE}${e.id}/" target="_blank" rel="noopener">公式ページで詳しく見る →</a>
+    </article>`).join("")}</div>
+  </div>`;
+  scroller.scrollTop=0;
+}
+
+function select(k,fromList){
+  st.sel=k; const v=V.find(x=>x.k===k);
+  if(!wide() && sheet.dataset.size==="peek") sheet.dataset.size="half";
+  const z=Math.max(map.getZoom(), k==="KK"?16:16);
+  if(!wide()){
+    // keep the pin above the sheet
+    const p=map.project([v.lat,v.lng],z); const h=sheet.getBoundingClientRect().height;
+    map.flyTo(map.unproject(p.add([0,h/2]),z),z,{duration:.5});
+  } else map.flyTo([v.lat,v.lng],z,{duration:.5});
+  render();
+}
+
+function render(fit){
+  paintMarkers(); updateBadge();
+  if(st.sel){ renderDetail(V.find(x=>x.k===st.sel)); } else renderList();
+  if(fit && st.areas.size){
+    const pts=V.filter(v=>st.areas.has(v.area)).map(v=>[v.lat,v.lng]);
+    if(pts.length) map.flyToBounds(pts,{padding:[40,40],maxZoom:16,paddingBottomRight:[0, wide()?0:sheet.getBoundingClientRect().height]});
+  }
+}
+map.whenReady(()=>{
+  const pts=V.map(v=>[v.lat,v.lng]);
+  map.fitBounds(pts,{paddingTopLeft:[20,20],paddingBottomRight:[20, wide()?20:sheet.getBoundingClientRect().height+10]});
+  render();
+});
+map.on("zoomend moveend",paintMarkers);
+map.on("click",()=>setOpen(false));
+sheet.addEventListener("pointerdown",()=>{ if(!wide()) setOpen(false); });
+addEventListener("resize",()=>map.invalidateSize());
+</script>
+
+</body>
+</html>
